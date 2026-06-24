@@ -19,10 +19,16 @@ env:
   GLOBAL_VERSION_PATH: MilkVio\GlobalVersion.cs
   ASSEMBLY_NAME: MilkVio.ACR
   NUGET_PACKAGES: ${{ github.workspace }}\.nuget\packages
+
   # ---------- 作者请在这里维护以下信息 ----------
-  ACR_AUTHOR: MilkVio
-  ACR_DESCRIPTION: 这是一个官方临时的高难ACR包，学者占星贤者由RyougiS制作，时间繁忙暂时合并为一个。待社区ACR优秀发展后将被替换。
+  ACR_AUTHOR: "MilkVio"
+  ACR_DESCRIPTION: "这是一个官方临时的高难 ACR 包，学者、占星术士与贤者由 RyougiS 制作。因目前维护时间有限，暂时合并为一个整合包；待社区 ACR 生态发展成熟后，将逐步由优秀的社区 ACR 替换。"
   ACR_API_VERSION: "12"
+
+  # 项目仓库地址，留空时不会写入 repo.json
+  ACR_SOURCE_REPOSITORY_URL: "https://github.com/MilkVio/MirukuACR-TC"
+
+  # 赞助地址，留空时不会写入 repo.json
   ACR_SPONSOR_URL: "https://afdian.com/a/PromeRotation"
 
 jobs:
@@ -46,10 +52,12 @@ jobs:
               $version = $version.Substring(1)
             }
           }
+
           $parsedVersion = $null
           if (-not [System.Version]::TryParse($version, [ref]$parsedVersion)) {
             throw "Version '$version' is not a valid System.Version value."
           }
+
           "version=$version" >> $env:GITHUB_OUTPUT
           "tag=v$version" >> $env:GITHUB_OUTPUT
 
@@ -116,7 +124,6 @@ jobs:
             throw "Could not find version constant in $path."
           }
 
-          $currentVersion = $match.Groups[0].Value
           $updated = $regex.Replace($text, '${1}' + $version + '${2}', 1)
 
           if ($updated -eq $text) {
@@ -145,6 +152,7 @@ jobs:
           if (-not (Test-Path $dllPath)) {
             throw "Build output not found: $dllPath"
           }
+
           Write-Host "ACR DLL: $dllPath"
 
       # ---------- 打包 latest.zip ----------
@@ -159,8 +167,19 @@ jobs:
           $depsJson = Join-Path $publishDir "${{ env.ASSEMBLY_NAME }}.deps.json"
 
           $toPack = @()
-          if (Test-Path $dll) { $toPack += $dll } else { throw "Missing: $dll" }
-          if (Test-Path $depsJson) { $toPack += $depsJson } else { Write-Host "Warning: deps.json not found, skipping." }
+          if (Test-Path $dll) {
+            $toPack += $dll
+          }
+          else {
+            throw "Missing: $dll"
+          }
+
+          if (Test-Path $depsJson) {
+            $toPack += $depsJson
+          }
+          else {
+            Write-Host "Warning: deps.json not found, skipping."
+          }
 
           $zipPath = Join-Path $distDir "latest.zip"
           Compress-Archive -Path $toPack -DestinationPath $zipPath -Force
@@ -178,11 +197,10 @@ jobs:
           $sha256 = (Get-FileHash -Algorithm SHA256 -Path $zipPath).Hash.ToLowerInvariant()
           Write-Host "SHA256: $sha256"
 
-          # 下载 URL
+          # ACR 下载地址始终使用当前仓库的 latest Release
           $downloadUrl = "${{ github.server_url }}/${{ github.repository }}/releases/latest/download/latest.zip"
-          $sourceRepositoryUrl = "${{ github.server_url }}/${{ github.repository }}"
 
-          # 构建 manifest
+          # 构建必填字段
           $manifest = [ordered]@{
             author                = "${{ env.ACR_AUTHOR }}"
             version               = "${{ steps.version.outputs.version }}"
@@ -192,20 +210,24 @@ jobs:
               [ordered]@{ job = "PLD"; contentScope = "HighEnd" }
               [ordered]@{ job = "WAR"; contentScope = "HighEnd" }
               [ordered]@{ job = "DRK"; contentScope = "HighEnd" }
+
               # Healer
               [ordered]@{ job = "WHM"; contentScope = "HighEnd" }
               [ordered]@{ job = "SCH"; contentScope = "HighEnd" }
               [ordered]@{ job = "AST"; contentScope = "HighEnd" }
               [ordered]@{ job = "SGE"; contentScope = "HighEnd" }
+
               # Melee DPS
               [ordered]@{ job = "MNK"; contentScope = "HighEnd" }
               [ordered]@{ job = "DRG"; contentScope = "HighEnd" }
               [ordered]@{ job = "NIN"; contentScope = "HighEnd" }
               [ordered]@{ job = "SAM"; contentScope = "HighEnd" }
               [ordered]@{ job = "VPR"; contentScope = "HighEnd" }
+
               # Ranged DPS
               [ordered]@{ job = "MCH"; contentScope = "HighEnd" }
               [ordered]@{ job = "DNC"; contentScope = "HighEnd" }
+
               # Caster DPS
               [ordered]@{ job = "SMN"; contentScope = "HighEnd" }
               [ordered]@{ job = "RDM"; contentScope = "HighEnd" }
@@ -214,9 +236,18 @@ jobs:
             apiVersion            = [int]"${{ env.ACR_API_VERSION }}"
             referencePromeVersion = "${{ steps.references.outputs.prome_version }}"
             downloadUrl           = $downloadUrl
-            sourceRepositoryUrl   = $sourceRepositoryUrl
-            sponsorUrl            = "${{ env.ACR_SPONSOR_URL }}"
             sha256                = $sha256
+          }
+
+          # 可选字段：留空时不写入 repo.json
+          $sourceRepositoryUrl = "${{ env.ACR_SOURCE_REPOSITORY_URL }}".Trim()
+          if (-not [string]::IsNullOrWhiteSpace($sourceRepositoryUrl)) {
+            $manifest["sourceRepositoryUrl"] = $sourceRepositoryUrl
+          }
+
+          $sponsorUrl = "${{ env.ACR_SPONSOR_URL }}".Trim()
+          if (-not [string]::IsNullOrWhiteSpace($sponsorUrl)) {
+            $manifest["sponsorUrl"] = $sponsorUrl
           }
 
           $json = $manifest | ConvertTo-Json -Depth 8
