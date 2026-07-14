@@ -8,6 +8,9 @@ namespace MilkVio.Common;
 // 只有都不存在时才回退到 Rotation.GetOpener()。选择仅存内存，不持久化。
 public sealed class OpenerSelector
 {
+    // 下拉栏最上方的“无起手”选项，选中后 Resolve 返回 null（空起手）。
+    private const string None = "无起手";
+
     private string? _selected;
 
     public void DrawCombo(string label, IReadOnlyDictionary<string, Type> openers)
@@ -21,17 +24,22 @@ public sealed class OpenerSelector
         var current = Current(openers);
         if (!ImGui.BeginCombo(label, current)) return;
 
-        foreach (var name in openers.Keys)
-        {
-            var isSelected = name == current;
-            if (ImGui.Selectable(name, isSelected))
-                _selected = name;
+        DrawItem(None, current);
 
-            if (isSelected)
-                ImGui.SetItemDefaultFocus();
-        }
+        foreach (var name in openers.Keys)
+            DrawItem(name, current);
 
         ImGui.EndCombo();
+    }
+
+    private void DrawItem(string name, string current)
+    {
+        var isSelected = name == current;
+        if (ImGui.Selectable(name, isSelected))
+            _selected = name;
+
+        if (isSelected)
+            ImGui.SetItemDefaultFocus();
     }
 
     public IOpener? Resolve(IReadOnlyDictionary<string, Type> openers)
@@ -40,6 +48,9 @@ public sealed class OpenerSelector
             return null;
 
         var name = Current(openers);
+        if (name == None)
+            return null;
+
         if (!openers.TryGetValue(name, out var openerType))
             return null;
 
@@ -61,6 +72,9 @@ public sealed class OpenerSelector
 
     private string Current(IReadOnlyDictionary<string, Type> openers)
     {
+        if (_selected == None)
+            return None;
+
         if (_selected != null && openers.ContainsKey(_selected))
             return _selected;
 
