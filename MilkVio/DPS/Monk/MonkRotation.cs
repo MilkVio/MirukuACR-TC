@@ -9,6 +9,7 @@ using PromeRotation.Extensions;
 using PromeRotation.Helpers;
 using PromeRotation.Managers;
 using PromeRotation.Resolvers;
+using MilkVio.Common;
 using MilkVio.DPS.Monk.Action.Gcd;
 using MilkVio.DPS.Monk.Action.OffGcd;
 using MilkVio.DPS.Monk.MNKData;
@@ -32,6 +33,7 @@ public class MonkRotation : IRotation
     private readonly List<IDecisionResolver> _alwaysResolvers = new();
     private readonly List<IDecisionResolver> _gcdResolvers = new();
     private readonly List<IDecisionResolver> _offGcdResolvers = new();
+    private readonly OpenerSelector _openerSelector = new();
     
     // 实现对外暴露的数据
     public static IReadOnlyDictionary<string, bool> QtList { get; } = new Dictionary<string, bool>
@@ -145,46 +147,10 @@ public class MonkRotation : IRotation
     // 该职业的起手
     public IOpener? GetOpener()
     {
-        if (!PromeSettings.Instance.GetQt("启用起手") && Core.Me == null)
+        if (!PromeSettings.Instance.GetQt(MNKQt.启用起手) || Core.Me == null)
             return null;
 
-        // PTL 起手优先：PTL 未提供 Opener 时才回退旧 Timeline Meta。
-        var openerName = PromeRotation.PureTimeline.PtlManager.CurrentOpener;
-        var openerSource = "PureTimeline";
-
-        if (string.IsNullOrWhiteSpace(openerName))
-        {
-            var meta = TimelineManager.CurrentMeta;
-            openerName = meta?.Opener;
-            openerSource = "Timeline";
-        }
-
-        if (string.IsNullOrWhiteSpace(openerName))
-            return null;
-        
-        // 查找对应起手类型（来自当前职业的 Meta.Openers）
-        var openers = RotationManager.GetOpenersByJob((int)Core.Me.ClassJob.RowId);
-        if (openers == null || !openers.TryGetValue(openerName, out var openerType))
-        {
-            PluginLog.Warning($"[ACR] {openerSource} 指定起手不存在：{openerName}");
-            return null;
-        }
-
-        try
-        {
-            // 动态创建对应起手类实例
-            if (Activator.CreateInstance(openerType) is IOpener opener)
-            {
-                PluginLog.Information($"[ACR] 从{openerSource} Meta 加载起手：{openerName}");
-                return opener;
-            }
-        }
-        catch (Exception ex)
-        {
-            PluginLog.Error($"[ACR] 创建起手实例失败: {ex.Message}");
-        }
-
-        return null;
+        return _openerSelector.Resolve(Openers);
     }
     
     public PAction? NextAlways()
@@ -295,7 +261,7 @@ public class MonkRotation : IRotation
 
     private void DrawGeneral()
     {
-        
+        _openerSelector.DrawCombo("起手选择", Openers);
     }
     
     private void DrawDev()

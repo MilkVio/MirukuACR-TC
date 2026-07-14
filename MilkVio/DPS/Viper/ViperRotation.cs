@@ -8,6 +8,7 @@ using PromeRotation.Extensions;
 using PromeRotation.Helpers;
 using PromeRotation.Managers;
 using PromeRotation.Resolvers;
+using MilkVio.Common;
 using MilkVio.DPS.UniversalData;
 using MilkVio.DPS.Viper.Action.Gcd;
 using MilkVio.DPS.Viper.Action.OffGcd;
@@ -31,6 +32,7 @@ public class ViperRotation : IRotation
     private readonly List<IDecisionResolver> _alwaysResolvers = new();
     private readonly List<IDecisionResolver> _gcdResolvers = new();
     private readonly List<IDecisionResolver> _offGcdResolvers = new();
+    private readonly OpenerSelector _openerSelector = new();
 
     public static IReadOnlyDictionary<string, bool> QtList { get; } = new Dictionary<string, bool>
     {
@@ -112,43 +114,10 @@ public class ViperRotation : IRotation
 
     public IOpener? GetOpener()
     {
-        if (!PromeSettings.Instance.GetQt("启用起手") && Core.Me == null)
+        if (!PromeSettings.Instance.GetQt(ViperQt.启用起手) || Core.Me == null)
             return null;
 
-        var openerName = PromeRotation.PureTimeline.PtlManager.CurrentOpener;
-        var openerSource = "PureTimeline";
-
-        if (string.IsNullOrWhiteSpace(openerName))
-        {
-            var meta = TimelineManager.CurrentMeta;
-            openerName = meta?.Opener;
-            openerSource = "Timeline";
-        }
-
-        if (string.IsNullOrWhiteSpace(openerName))
-            return null;
-
-        var openers = RotationManager.GetOpenersByJob((int)Core.Me.ClassJob.RowId);
-        if (openers == null || !openers.TryGetValue(openerName, out var openerType))
-        {
-            PluginLog.Warning($"[ACR] {openerSource} 指定起手不存在：{openerName}");
-            return null;
-        }
-
-        try
-        {
-            if (Activator.CreateInstance(openerType) is IOpener opener)
-            {
-                PluginLog.Information($"[ACR] 从{openerSource} Meta 加载起手：{openerName}");
-                return opener;
-            }
-        }
-        catch (Exception ex)
-        {
-            PluginLog.Error($"[ACR] 创建起手实例失败: {ex.Message}");
-        }
-
-        return null;
+        return _openerSelector.Resolve(Openers);
     }
 
     public PAction? NextAlways()
@@ -249,7 +218,7 @@ public class ViperRotation : IRotation
 
     private void DrawGeneral()
     {
-
+        _openerSelector.DrawCombo("起手选择", Openers);
     }
 
     private static readonly Vector4 GreenText = new(0f, 1f, 0f, 1f);
