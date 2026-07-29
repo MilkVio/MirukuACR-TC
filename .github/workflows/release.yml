@@ -23,7 +23,7 @@ env:
   # ---------- 作者请在这里维护以下信息 ----------
   ACR_AUTHOR: "MilkVio"
   ACR_DESCRIPTION: "这是一个官方临时的高难 ACR 包，学者、占星术士与贤者由 RyougiS 制作。因目前维护时间有限，暂时合并为一个整合包；待社区 ACR 生态发展成熟后，将逐步由优秀的社区 ACR 替换。"
-  ACR_API_VERSION: "12"
+  ACR_API_VERSION: "13"
 
   # 项目仓库地址，留空时不会写入 repo.json
   ACR_SOURCE_REPOSITORY_URL: "https://github.com/MilkVio/MirukuACR-TC"
@@ -85,13 +85,13 @@ jobs:
 
           $assets = Get-Content $assetsPath -Raw | ConvertFrom-Json
 
-          # 从 project.assets.json 读取实际解析到的 PromeRotation.SDK.API12 包名和包目录
+          # 从 project.assets.json 读取实际解析到的 PromeRotation.SDK.TC 包名和包目录
           $sdkKey = ($assets.libraries | Get-Member -MemberType NoteProperty).Name |
-            Where-Object { $_ -like "PromeRotation.SDK.API12/*" } |
+            Where-Object { $_ -like "PromeRotation.SDK.TC/*" } |
             Select-Object -First 1
 
           if (-not $sdkKey) {
-            throw "PromeRotation.SDK.API12 not found in project.assets.json"
+            throw "PromeRotation.SDK.TC not found in project.assets.json"
           }
 
           # project.assets.json 里的 path 字段是相对于 NuGet 包缓存根目录的相对路径

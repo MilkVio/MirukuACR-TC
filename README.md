@@ -1,6 +1,6 @@
 # MirukuACR
 
-适用于 **PromeRotation API12 繁中服**的高难内容 ACR包。
+适用于 **PromeRotation API13 繁中服**的高难内容 ACR包。
 
 本项目是 PromeRotation 主开发暂时维护的一套高难 ACR。由于目前精力有限，**RyougiS做的奶妈**暂时合并在同一个ACR包中统一发布。
 

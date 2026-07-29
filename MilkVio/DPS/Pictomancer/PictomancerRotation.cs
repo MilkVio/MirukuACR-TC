@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.JobGauge.Enums;
 using ECommons.DalamudServices;
 using ECommons.ExcelServices;
